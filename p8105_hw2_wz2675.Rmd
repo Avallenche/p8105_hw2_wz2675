@@ -117,3 +117,31 @@ july_2021_cigbutts = sum(july_2021_cigbutts)
 ```
 
 From the final data set I combine, there are in total `r nrow(trash_wheel_df)` observations. On average, the `homes_powered` variable represent the number of home powered trash wheel. Comparing three different trash wheel, the most home powered trash wheel is Mr. Trash wheel, which in total have 29139 home powered wheels. The total weight of trash that collected by Professor Trash Wheel is 190.12 tons. The total number of cigarette butts collected by Gwynnda in July of 2021 is `r july_2021_cigbutts`
+
+# Problem 3
+
+```{r}
+mci_baseline = 
+  read_csv("Data/MCI_baseline.csv", skip = 1) |> 
+  janitor::clean_names() |> 
+  mutate(sex = ifelse(sex == 1, "male", "female"),
+         apoe4 = ifelse(apoe4 == 1, "carrier", "non-carrier"))
+
+mci_developed =
+  filter(mci_baseline, apoe4 == "carrier")
+
+female_mci = 
+  filter(mci_developed, sex == "female")
+```
+
+To tidy this data set, we first load this data set via `read_csv` function, remove the first row for the hint of the data set, and clean up the name using `clean_names` function in `janitor` package. Then we replace the numeric value in `sex` and `apoe4` variables using `mutate` and `ifelse` function. Inside the data set, we observed there are `r nrow(mci_baseline)` participants who are recruited. Among all these participants `r nrow(mci_developed)` participants have developed MCI. The average baseline age is `r mean(pull(mci_baseline, current_age))` and the portion of women are APOE4 carriers are `r nrow(female_mci) / nrow(mci_developed) * 100`%.
+
+```{r}
+mci_amyloid = 
+  read_csv("Data/mci_amyloid.csv", skip = 1) |> 
+  janitor::clean_names()
+
+baseline_amyloid = 
+  inner_join(mci_baseline, mci_amyloid, by = c("id" = "study_id"))
+```
+
