@@ -1,0 +1,119 @@
+---
+title: "P8105 Homework 2"
+author: "Wenyu Zhang"
+date: "2023-09-26"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readxl)
+```
+
+# Problem 1
+
+## Part 1
+
+First, let's tidy the `pols-month.csv` file.
+```{r}
+pols_month = 
+  read_csv("Data/pols-month.csv") |>
+  separate(mon, into = c("year", "month", "day")) |> 
+  mutate(month = month.abb[as.numeric(month)],
+         year = as.numeric(year),
+         president = ifelse(prez_gop == 1, "gop", "dem")) |> 
+  select(-prez_gop, -prez_dem, -day)
+```
+
+## Part 2
+
+Secondly, let's tidy up `snp.csv` file.
+```{r}
+snp =
+  read_csv("Data/snp.csv") |> 
+  mutate(date = as.Date(date, format = "%m/%d/%y"),
+         date = as.Date(ifelse(date > Sys.Date(),
+                               format(date, "19%y-%m-%d"),
+                               format(date)))) |> 
+  separate(date, into = c("year", "month", "day")) |> 
+  mutate(month = month.abb[as.numeric(month)],
+         year = as.numeric(year)) |> 
+  select(-day) |> 
+  arrange(year, month)
+```
+
+## Part 3
+
+Thirdly, let's tidy up `unemployment.csv` file.
+```{r}
+unemployment =
+  read_csv("Data/unemployment.csv") |> 
+  pivot_longer(Jan:Dec,
+               names_to = "month",
+               values_to = "unemployment_per") |> 
+  janitor::clean_names()
+```
+
+## Part 4
+
+Finally, combine all three tidied files into one large, tidy file.
+```{r}
+pols_snp =
+  left_join(pols_month, snp, by = c("year", "month"))
+fivethirtyeight = 
+  left_join(pols_snp, unemployment, by = c("year", "month"))
+```
+
+The data set above we manipulate are all come from "FiveThirtyEight" data. For the `pols-month.csv` data, it includes the date of the record and status of 822 politicians at that time. It states whether these politicians are republican or democratic. Whether they are governors, senators, or representatives. For the `snp.csv` files, it includes the date of the record and the Standard & Poor's stock market index at that date. For `unemployment.csv`, it includes the percentage of unemployment in each month in associate years. All three data have a range from approximately 1950s to 2015. The resulting data set including 822 observations and 12 variables from three data set we joint together. There exist some NA values, which resulting from different data set we joint lack some of the data in specific years. So, we need to omit some data points from the data set if we are looking for specific patterns or making plots.
+
+# Problem 2
+
+```{r}
+mr_trash_wheel =
+  read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+             sheet = 1,
+             range = cell_cols("A:N")) |> 
+  janitor::clean_names() |> 
+  mutate(homes_powered = weight_tons * 500 / 30,
+         year = as.numeric(year),
+         brand = "Mr. Trash")
+```
+
+```{r}
+professor_trash_wheel = 
+  read_excel("data/202207 Trash Wheel Collection Data.xlsx",
+             sheet = 2,
+             range = cell_cols("A:M")) |> 
+  janitor::clean_names() |> 
+  mutate(homes_powered = weight_tons * 500 / 30,
+         brand = "Professor Trash")
+```
+
+```{r}
+gwynnda_trash_wheel = 
+  read_excel("data/202207 Trash Wheel Collection Data.xlsx",
+             sheet = 4,
+             range = cell_cols("A:K")) |> 
+  janitor::clean_names() |> 
+  mutate(homes_powered = weight_tons * 500 / 30,
+         brand = "Gwynnda Trash") |> 
+  na.omit()
+```
+
+```{r}
+mr_professor =
+  full_join(mr_trash_wheel, professor_trash_wheel)
+trash_wheel_df =
+  full_join(mr_professor, gwynnda_trash_wheel)
+```
+
+```{r}
+july_2021_cigbutts = 
+  gwynnda_trash_wheel |> 
+  filter(month == "July" & year == 2021) |> 
+  select(cigarette_butts)
+july_2021_cigbutts = sum(july_2021_cigbutts)
+```
+
+From the final data set I combine, there are in total `r nrow(trash_wheel_df)` observations. On average, the `homes_powered` variable represent the number of home powered trash wheel. Comparing three different trash wheel, the most home powered trash wheel is Mr. Trash wheel, which in total have 29139 home powered wheels. The total weight of trash that collected by Professor Trash Wheel is 190.12 tons. The total number of cigarette butts collected by Gwynnda in July of 2021 is `r july_2021_cigbutts`
