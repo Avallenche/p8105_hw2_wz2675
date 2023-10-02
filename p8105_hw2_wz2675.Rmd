@@ -19,9 +19,8 @@ First, let's tidy the `pols-month.csv` file.
 ```{r}
 pols_month = 
   read_csv("Data/pols-month.csv") |>
-  separate(mon, into = c("year", "month", "day")) |> 
-  mutate(month = month.abb[as.numeric(month)],
-         year = as.numeric(year),
+  separate(mon, into = c("year", "month", "day"), convert = TRUE) |> 
+  mutate(month = month.name[month],
          president = ifelse(prez_gop == 1, "gop", "dem")) |> 
   select(-prez_gop, -prez_dem, -day)
 ```
@@ -32,43 +31,49 @@ Secondly, let's tidy up `snp.csv` file.
 ```{r}
 snp =
   read_csv("Data/snp.csv") |> 
-  mutate(date = as.Date(date, format = "%m/%d/%y"),
-         date = as.Date(ifelse(date > Sys.Date(),
-                               format(date, "19%y-%m-%d"),
-                               format(date)))) |> 
-  separate(date, into = c("year", "month", "day")) |> 
-  mutate(month = month.abb[as.numeric(month)],
-         year = as.numeric(year)) |> 
-  select(-day) |> 
-  arrange(year, month)
+  separate(date, into = c("month", "year", "day"),convert = TRUE) |> 
+  arrange(year, month) |> 
+  mutate(month = month.name[month])|> 
+  select(year, month, close)
 ```
 
 ## Part 3
 
 Thirdly, let's tidy up `unemployment.csv` file.
 ```{r}
+month_df = 
+  tibble(
+    month_num = 1:12,
+    month_abb = month.abb,
+    month = month.name
+  )
+
 unemployment =
   read_csv("Data/unemployment.csv") |> 
+  rename(year = Year) |> 
   pivot_longer(Jan:Dec,
-               names_to = "month",
+               names_to = "month_abb",
                values_to = "unemployment_per") |> 
-  janitor::clean_names()
+  left_join(x = _, y = month_df) |> 
+  select(year, month, unemployment_per)
 ```
 
 ## Part 4
 
 Finally, combine all three tidied files into one large, tidy file.
 ```{r}
-pols_snp =
-  left_join(pols_month, snp, by = c("year", "month"))
-fivethirtyeight = 
-  left_join(pols_snp, unemployment, by = c("year", "month"))
+data_5308 =
+  left_join(pols_month, snp) |> 
+  left_join(x = _, y = unemployment)
 ```
 
-The data set above we manipulate are all come from "FiveThirtyEight" data. For the `pols-month.csv` data, it includes the date of the record and status of 822 politicians at that time. It states whether these politicians are republican or democratic. Whether they are governors, senators, or representatives. For the `snp.csv` files, it includes the date of the record and the Standard & Poor's stock market index at that date. For `unemployment.csv`, it includes the percentage of unemployment in each month in associate years. All three data have a range from approximately 1950s to 2015. The resulting data set including 822 observations and 12 variables from three data set we joint together. There exist some NA values, which resulting from different data set we joint lack some of the data in specific years. So, we need to omit some data points from the data set if we are looking for specific patterns or making plots.
+The data set above I manipulate are all come from "FiveThirtyEight" data. For the `pols-month.csv` data, it includes the date of the record and status of 822 politicians at that time. It states whether these politicians are republican or democratic. Whether they are governors, senators, or representatives. For the `snp.csv` files, it includes the date of the record and the Standard & Poor's stock market index at that date. For `unemployment.csv`, it includes the percentage of unemployment in each month in associate years. All three data have a range from approximately 1950s to 2015. The resulting data set including 822 observations and 12 variables from three data set we joint together. There exist some NA values, which resulting from different data set we joint lack some of the data in specific years. So, I need to omit some data points from the data set if we are looking for specific patterns or making plots.
 
 # Problem 2
 
+## Part 1
+
+In this part, I import, clean, and organize the data for Mr. Trash Wheel from the excel file inside the excel file `202207 Trash Wheel Collection Data.xlsx`.
 ```{r}
 mr_trash_wheel =
   read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
@@ -80,6 +85,9 @@ mr_trash_wheel =
          brand = "Mr. Trash")
 ```
 
+## Part 2
+
+Moving on, I import, clean, and organize the data for Professor Trash Wheel and Gwynnda Trash Wheel located in different sheets from the same excel file.
 ```{r}
 professor_trash_wheel = 
   read_excel("data/202207 Trash Wheel Collection Data.xlsx",
@@ -101,13 +109,14 @@ gwynnda_trash_wheel =
   na.omit()
 ```
 
+After that, I combine all three data sets to form a large, tidied data frame.
 ```{r}
-mr_professor =
-  full_join(mr_trash_wheel, professor_trash_wheel)
-trash_wheel_df =
-  full_join(mr_professor, gwynnda_trash_wheel)
+trash_wheel_df = bind_rows(mr_trash_wheel, 
+                           professor_trash_wheel,
+                           gwynnda_trash_wheel)
 ```
 
+Calculating the cigarette butts collected by Gwynnda Trash Wheel in July of 2021
 ```{r}
 july_2021_cigbutts = 
   gwynnda_trash_wheel |> 
@@ -120,6 +129,9 @@ From the final data set I combine, there are in total `r nrow(trash_wheel_df)` o
 
 # Problem 3
 
+## Part 1
+
+In this part, I import, clean, and organize the data `MCI_baseline.csv`. And I'm looking for some specific patterns inside this data frame.
 ```{r}
 mci_baseline = 
   read_csv("Data/MCI_baseline.csv", skip = 1) |> 
@@ -134,8 +146,11 @@ female_mci =
   filter(mci_developed, sex == "female")
 ```
 
-To tidy this data set, we first load this data set via `read_csv` function, remove the first row for the hint of the data set, and clean up the name using `clean_names` function in `janitor` package. Then we replace the numeric value in `sex` and `apoe4` variables using `mutate` and `ifelse` function. Inside the data set, we observed there are `r nrow(mci_baseline)` participants who are recruited. Among all these participants `r nrow(mci_developed)` participants have developed MCI. The average baseline age is `r mean(pull(mci_baseline, current_age))` and the portion of women are APOE4 carriers are `r nrow(female_mci) / nrow(mci_developed) * 100`%.
+To tidy this data set, I first load this data set via `read_csv` function, remove the first row for the hint of the data set, and clean up the name using `clean_names` function in `janitor` package. Then I replace the numeric value in `sex` and `apoe4` variables using `mutate` and `ifelse` function. Inside the data set, I observed there are `r nrow(mci_baseline)` participants who are recruited. Among all these participants `r nrow(mci_developed)` participants have developed MCI. The average baseline age is `r mean(pull(mci_baseline, current_age))` and the portion of women are APOE4 carriers are `r nrow(female_mci) / nrow(mci_developed) * 100`%.
 
+## Part 2
+
+In this section, I import, tidy, and organize the data file `mci_amyloid.csv`. And I bind the observations appears in both baseline and Amyloid data frames as a new data set.
 ```{r}
 mci_amyloid = 
   read_csv("Data/mci_amyloid.csv", skip = 1) |> 
@@ -143,5 +158,12 @@ mci_amyloid =
 
 baseline_amyloid = 
   inner_join(mci_baseline, mci_amyloid, by = c("id" = "study_id"))
+```
+
+For the this data set, it is much easier to clean up. Just cleaning the names of the data is enough. Observing two different datasets, there appears some unique IDs inside both files, which means some participants are only appears in baseline or biomarkers datasets. After combining these two data sets, we could better find the pattern between whether the patient are carrier or not given the biomarker results. It seems that carriers have fluctuations appears in the biomarker results.
+
+Export the new data set into the "Data" files in the project directory
+```{r}
+write_csv(baseline_amyloid, "Data/baseline_amyloid.csv")
 ```
 
