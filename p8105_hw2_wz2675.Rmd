@@ -73,16 +73,18 @@ The data set above I manipulate are all come from "FiveThirtyEight" data. For th
 
 ## Part 1
 
-In this part, I import, clean, and organize the data for Mr. Trash Wheel from the excel file inside the excel file `202207 Trash Wheel Collection Data.xlsx`.
+In this part, I import, clean, and organize the data for Mr. Trash Wheel from the excel file inside the excel file `202309 Trash Wheel Collection Data.xlsx`.
 ```{r}
 mr_trash_wheel =
-  read_excel("data/202207 Trash Wheel Collection Data.xlsx", 
+  read_excel("Data/202309 Trash Wheel Collection Data.xlsx", 
              sheet = 1,
              range = cell_cols("A:N")) |> 
+  head(-1) |> 
   janitor::clean_names() |> 
   mutate(homes_powered = weight_tons * 500 / 30,
          year = as.numeric(year),
-         brand = "Mr. Trash")
+         brand = "Mr. Trash") |> 
+  select(dumpster, brand, everything())
 ```
 
 ## Part 2
@@ -90,23 +92,26 @@ mr_trash_wheel =
 Moving on, I import, clean, and organize the data for Professor Trash Wheel and Gwynnda Trash Wheel located in different sheets from the same excel file.
 ```{r}
 professor_trash_wheel = 
-  read_excel("data/202207 Trash Wheel Collection Data.xlsx",
+  read_excel("data/202309 Trash Wheel Collection Data.xlsx",
              sheet = 2,
              range = cell_cols("A:M")) |> 
+  head(-1) |> 
   janitor::clean_names() |> 
   mutate(homes_powered = weight_tons * 500 / 30,
-         brand = "Professor Trash")
+         brand = "Professor Trash") |> 
+  select(dumpster, brand, everything())
 ```
 
 ```{r}
 gwynnda_trash_wheel = 
-  read_excel("data/202207 Trash Wheel Collection Data.xlsx",
+  read_excel("data/202309 Trash Wheel Collection Data.xlsx",
              sheet = 4,
              range = cell_cols("A:K")) |> 
+  head(-2) |> 
   janitor::clean_names() |> 
   mutate(homes_powered = weight_tons * 500 / 30,
          brand = "Gwynnda Trash") |> 
-  na.omit()
+  select(dumpster, brand, everything())
 ```
 
 After that, I combine all three data sets to form a large, tidied data frame.
@@ -116,16 +121,7 @@ trash_wheel_df = bind_rows(mr_trash_wheel,
                            gwynnda_trash_wheel)
 ```
 
-Calculating the cigarette butts collected by Gwynnda Trash Wheel in July of 2021
-```{r}
-july_2021_cigbutts = 
-  gwynnda_trash_wheel |> 
-  filter(month == "July" & year == 2021) |> 
-  select(cigarette_butts)
-july_2021_cigbutts = sum(july_2021_cigbutts)
-```
-
-From the final data set I combine, there are in total `r nrow(trash_wheel_df)` observations. On average, the `homes_powered` variable represent the number of home powered trash wheel. Comparing three different trash wheel, the most home powered trash wheel is Mr. Trash wheel, which in total have 29139 home powered wheels. The total weight of trash that collected by Professor Trash Wheel is 190.12 tons. The total number of cigarette butts collected by Gwynnda in July of 2021 is `r july_2021_cigbutts`
+From the final data set I combine, there are in total `r nrow(trash_wheel_df)` observations. On average, the `homes_powered` variable represent the number of home powered trash wheel. Comparing three different trash wheel, the most home powered trash wheel is Mr. Trash wheel, which in total have 29139 home powered wheels. The total weight of trash that collected by Professor Trash Wheel is 190.12 tons. The total number of cigarette butts collected by Gwynnda in July of 2021 is `r sum(filter(gwynnda_trash_wheel, month == "July" & year == 2021) |> select(cigarette_butts))`.
 
 # Problem 3
 
